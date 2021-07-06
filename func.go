@@ -17,24 +17,41 @@ import (
 const RPNUM = 5
 const KETCHECK64 = `qQ1wW2eE3rR4tT5yY6uU7iI8oO9pP0aA1sS2dD3fF4gG5hH6jJ7kK8lL9zZ0xX1cC2vV3bB4nN5mM6qQ1wW2eE3rR4tT5yY6uU7iI8oO9pP0aA1sS2dD3fF4gG5hH6jJ7kK8lL9zZ0xX1cC2vV3bB4nN5mM6qQ1wW2eE3rR4tT5yY6uU7iI8oO9pP0aA1sS2dD3fF4gG5hH6jJ7kK8lL9zZ0xX1cC2vV3bB4nN5mM6qQ1wW2eE3rR4tT5yY6uU7iI8oO9pP0aA1sS2dD3fF4gG5hH6jJ7kK8lL9zZ0xX1cC2vV3bB4nN5mM6`
 
-func LoginRenderToken(hashedPassword string, password string, userIdOrUserName string, clientSecret string) (authParams string, err error) {
+func HmacValidate(hmacUrl string, clientSecret string) (valid bool) {
+	u, err1 := url.Parse(hmacUrl)
+	if err1 != nil {
+		return
+	}
+	q2 := u.Query()
+
+	var hashMac = q2.Get("hmac")
+	q2.Del("hmac")
+
+	hash := hmac.New(sha256.New, []byte(clientSecret))
+	hash.Write([]byte(q2.Encode()))
+
+	valid = hashMac == hex.EncodeToString(hash.Sum(nil))
+	return
+}
+
+func LoginRenderHmacToken(hashedPassword string, password string, user string, clientSecret string, baseUrl string) (authParams string, err error) {
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err == nil {
-		u, err1 := url.Parse("")
+		u, err1 := url.Parse(baseUrl)
 		if err1 != nil {
-			err = err1
-			return
+			u, _ = url.Parse("")
 		}
 		var timestamp = fmt.Sprint(time.Now().Unix())
 		q2 := u.Query()
 
-		session, err2 := Hash(userIdOrUserName + hashedPassword)
+		session, err2 := HashGenerateFromPassword(user)
 		if err2 != nil {
 			err = err2
 			return
 		}
-		q2.Set("hashed", hashedPassword)
-		q2.Set("session", base64.StdEncoding.EncodeToString([]byte(session)))
+
+		q2.Set("user", user)
+		q2.Set("session", session)
 		q2.Set("timestamp", timestamp)
 
 		hash := hmac.New(sha256.New, []byte(clientSecret))
@@ -46,7 +63,7 @@ func LoginRenderToken(hashedPassword string, password string, userIdOrUserName s
 	return
 }
 
-func Hash(password string) (string, error) {
+func HashGenerateFromPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
 }
