@@ -1,14 +1,60 @@
 package go_login_token
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
+	"html"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const RPNUM = 5
 const KETCHECK64 = `qQ1wW2eE3rR4tT5yY6uU7iI8oO9pP0aA1sS2dD3fF4gG5hH6jJ7kK8lL9zZ0xX1cC2vV3bB4nN5mM6qQ1wW2eE3rR4tT5yY6uU7iI8oO9pP0aA1sS2dD3fF4gG5hH6jJ7kK8lL9zZ0xX1cC2vV3bB4nN5mM6qQ1wW2eE3rR4tT5yY6uU7iI8oO9pP0aA1sS2dD3fF4gG5hH6jJ7kK8lL9zZ0xX1cC2vV3bB4nN5mM6qQ1wW2eE3rR4tT5yY6uU7iI8oO9pP0aA1sS2dD3fF4gG5hH6jJ7kK8lL9zZ0xX1cC2vV3bB4nN5mM6`
+
+func LoginRenderToken(hashedPassword string, password string, userIdOrUserName string, clientSecret string) (authParams string, err error) {
+	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err == nil {
+		u, err1 := url.Parse("")
+		if err1 != nil {
+			err = err1
+			return
+		}
+		var timestamp = fmt.Sprint(time.Now().Unix())
+		q2 := u.Query()
+
+		session, err2 := Hash(userIdOrUserName + hashedPassword)
+		if err2 != nil {
+			err = err2
+			return
+		}
+		q2.Set("hashed", hashedPassword)
+		q2.Set("session", base64.StdEncoding.EncodeToString([]byte(session)))
+		q2.Set("timestamp", timestamp)
+
+		hash := hmac.New(sha256.New, []byte(clientSecret))
+		hash.Write([]byte(q2.Encode()))
+
+		q2.Set("hmac", hex.EncodeToString(hash.Sum(nil)))
+		authParams = fmt.Sprint("?", q2.Encode())
+	}
+	return
+}
+
+func Hash(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func Santize(data string) string {
+	data = html.EscapeString(strings.TrimSpace(data))
+	return data
+}
 
 func GetB64result(dataEnDe string, timestampEncode int64, statusEncode bool) (resultEncode, resultDecode string, timestamp int64) {
 
