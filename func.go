@@ -51,7 +51,7 @@ func LoginRenderHmacToken(hashedPassword string, password string, user string, c
 		}
 
 		q2.Set("user", user)
-		q2.Set("session", session)
+		q2.Set("session", base64.StdEncoding.EncodeToString([]byte(session)))
 		q2.Set("timestamp", timestamp)
 
 		hash := hmac.New(sha256.New, []byte(clientSecret))
