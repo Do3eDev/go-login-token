@@ -9,3 +9,5 @@ Thumbs.db
 .idea
 *.idea
 *.idea/
+go.mod
+go.sum
